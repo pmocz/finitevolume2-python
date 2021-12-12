@@ -1,4 +1,4 @@
-# finitevolume-python
+# finitevolume2-python
 Finite Volume simulation of the Raleigh-Taylor Instability
 
 ## Create Your Own Finite Volume Fluid Simulation (With Python): Part 2 Boundary Conditions and Source Terms
