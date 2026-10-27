@@ -58,11 +58,12 @@ def getPrimitive(Mass, Momx, Momy, Energy, gamma, vol):
     return rho, vx, vy, P
 
 
-def getGradient(f, dx):
+def getGradient(f, dx, parity=1):
     """
     Calculate the gradients of a field
         f        is a matrix of the field
         dx       is the cell size
+        parity   is +1 if f is mirrored into the ghost cells, -1 if sign-flipped
         f_dx     is a matrix of derivative of f in the x-direction
         f_dy     is a matrix of derivative of f in the y-direction
     """
@@ -73,18 +74,19 @@ def getGradient(f, dx):
     f_dx = (np.roll(f, R, axis=0) - np.roll(f, L, axis=0)) / (2 * dx)
     f_dy = (np.roll(f, R, axis=1) - np.roll(f, L, axis=1)) / (2 * dx)
 
-    f_dx, f_dy = setGhostGradients(f_dx, f_dy)
+    f_dx, f_dy = setGhostGradients(f_dx, f_dy, parity)
 
     return f_dx, f_dy
 
 
-def slopeLimit(f, dx, f_dx, f_dy):
+def slopeLimit(f, dx, f_dx, f_dy, parity=1):
     """
     Apply slope limiter to slopes
         f        is a matrix of the field
         dx       is the cell size
         f_dx     is a matrix of derivative of f in the x-direction
         f_dy     is a matrix of derivative of f in the y-direction
+        parity   is +1 if f is mirrored into the ghost cells, -1 if sign-flipped
     """
     # directions for np.roll()
     R = -1  # right
@@ -126,6 +128,8 @@ def slopeLimit(f, dx, f_dx, f_dy):
         )
         * f_dy
     )
+
+    f_dx, f_dy = setGhostGradients(f_dx, f_dy, parity)
 
     return f_dx, f_dy
 
@@ -267,15 +271,16 @@ def setGhostCells(rho, vx, vy, P):
     return rho, vx, vy, P
 
 
-def setGhostGradients(f_dx, f_dy):
+def setGhostGradients(f_dx, f_dy, parity):
     """
     Set ghost cell y-gradients at the top and bottom to be reflections
         f_dx     is a matrix of derivative of f in the x-direction
         f_dy     is a matrix of derivative of f in the y-direction
+        parity   is +1 if f is mirrored into the ghost cells, -1 if sign-flipped
     """
 
-    f_dy[:, 0] = -f_dy[:, 1]
-    f_dy[:, -1] = -f_dy[:, -2]
+    f_dy[:, 0] = -parity * f_dy[:, 1]
+    f_dy[:, -1] = -parity * f_dy[:, -2]
 
     return f_dx, f_dy
 
@@ -361,14 +366,14 @@ def main():
         # calculate gradients
         rho_dx, rho_dy = getGradient(rho, dx)
         vx_dx, vx_dy = getGradient(vx, dx)
-        vy_dx, vy_dy = getGradient(vy, dx)
+        vy_dx, vy_dy = getGradient(vy, dx, parity=-1)
         P_dx, P_dy = getGradient(P, dx)
 
         # slope limit gradients
         if useSlopeLimiting:
             rho_dx, rho_dy = slopeLimit(rho, dx, rho_dx, rho_dy)
             vx_dx, vx_dy = slopeLimit(vx, dx, vx_dx, vx_dy)
-            vy_dx, vy_dy = slopeLimit(vy, dx, vy_dx, vy_dy)
+            vy_dx, vy_dy = slopeLimit(vy, dx, vy_dx, vy_dy, parity=-1)
             P_dx, P_dy = slopeLimit(P, dx, P_dx, P_dy)
 
         # extrapolate half-step in time
